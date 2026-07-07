@@ -1,0 +1,7 @@
+.claude/
+__pycache__/
+desktop.ini
+bracket_picks_updated.xlsx
+bracket_compact.html
+bracket_scorer.py
+bracket_scorer_compact.py

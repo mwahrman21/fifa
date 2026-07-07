@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FIFA World Cup Bracket</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #0a1628; color: #e8eaf0; min-height: 100vh; }
+
+  header { background: linear-gradient(135deg, #1e3a5f, #c8a040); padding: 24px 32px; display: flex; align-items: center; gap: 16px; }
+  header h1 { font-size: 1.8rem; font-weight: 700; letter-spacing: 1px; }
+  header .sub { font-size: 0.9rem; opacity: 0.8; margin-top: 4px; }
+  .trophy { font-size: 2.2rem; }
+
+  section { max-width: 1600px; margin: 0 auto; padding: 24px 16px; }
+  h2 { font-size: 1.1rem; text-transform: uppercase; letter-spacing: 2px; color: #c8a040; margin-bottom: 16px; padding-bottom: 6px; border-bottom: 1px solid #2a3f5f; }
+
+  /* Leaderboard */
+  .lb-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  thead tr { background: #1e3a5f; }
+  th { padding: 10px 14px; text-align: center; color: #c8a040; font-weight: 600; white-space: nowrap; }
+  th:nth-child(2) { text-align: left; }
+  tbody tr { border-bottom: 1px solid #1a2a40; transition: background 0.15s; }
+  tbody tr:hover { background: #162035; }
+  td { padding: 9px 14px; text-align: center; }
+  td:nth-child(2) { text-align: left; }
+  .pts-total { font-weight: 700; font-size: 1rem; color: #c8a040; }
+  tbody tr:first-child td:first-child::after { content: ' 🥇'; }
+  tbody tr:nth-child(2) td:first-child::after { content: ' 🥈'; }
+  tbody tr:nth-child(3) td:first-child::after { content: ' 🥉'; }
+
+  /* Tabs */
+  .tabs-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .tab-btn { background: #1e2d45; border: 1px solid #2a3f5f; color: #a0b4cc; padding: 7px 14px; border-radius: 20px; cursor: pointer; font-size: 0.82rem; font-weight: 500; transition: all 0.15s; white-space: nowrap; }
+  .tab-btn:hover { background: #1e3a5f; color: #e8eaf0; }
+  .tab-btn.active { background: #c8a040; border-color: #c8a040; color: #0a1628; font-weight: 700; }
+
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* Score bar */
+  .player-score-bar { background: #1e2d45; border-radius: 8px; padding: 10px 16px; margin-bottom: 16px; font-size: 0.85rem; color: #a0b4cc; }
+
+  /* Bracket grid */
+  .bracket-grid { display: flex; align-items: center; gap: 0; overflow-x: auto; padding-bottom: 12px; }
+  .bcol { display: flex; flex-direction: column; justify-content: space-around; }
+  .bcol.center { flex: 0 0 120px; display: flex; align-items: center; justify-content: center; }
+
+  .rounds-8 { flex: 0 0 110px; }
+  .rounds-4 { flex: 0 0 110px; }
+  .rounds-2 { flex: 0 0 110px; }
+  .rounds-1 { flex: 0 0 110px; }
+
+  .match-pair { display: flex; align-items: center; position: relative; flex: 1; }
+
+  .b-cell { background: #1e2d45; border: 1px solid #2a3f5f; border-radius: 4px; padding: 5px 8px; font-size: 0.78rem; width: 100px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 3px 0; position: relative; }
+  .b-cell.c { background: #1a3d2b; border-color: #2e7d52; color: #4caf50; }
+  .b-cell.w { background: #3d1a1a; border-color: #7d2e2e; color: #ef5350; }
+  .b-cell.p { background: #1e2d45; border-color: #2a3f5f; color: #78909c; font-style: italic; }
+
+  /* Connector lines */
+  .bcol:not(.center) .match-pair { padding-right: 0; }
+
+  /* Champion slot */
+  .champion-slot { background: #1e3a5f; border: 2px solid #c8a040; border-radius: 10px; padding: 14px 10px; text-align: center; width: 110px; }
+  .champion-slot.c { background: #1a3d2b; border-color: #4caf50; }
+  .champion-slot.w { background: #3d1a1a; border-color: #ef5350; }
+  .champion-slot.p { background: #1e2d45; border-color: #546e7a; }
+  .champ-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #c8a040; margin-bottom: 6px; }
+  .champion-slot.c .champ-label { color: #4caf50; }
+  .champion-slot.w .champ-label { color: #ef5350; }
+  .champion-slot.p .champ-label { color: #546e7a; }
+  .champ-pick { font-size: 0.9rem; font-weight: 700; }
+
+  /* Column headers */
+  .bracket-header { display: flex; gap: 0; margin-bottom: 4px; overflow-x: auto; }
+  .bh { flex: 0 0 110px; text-align: center; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #546e7a; padding: 4px 0; }
+  .bh.center { flex: 0 0 120px; color: #c8a040; font-weight: 700; }
+
+  /* Legend */
+  .legend { display: flex; gap: 20px; margin-bottom: 12px; font-size: 0.8rem; }
+  .leg { display: flex; align-items: center; gap: 6px; }
+  .leg-dot { width: 12px; height: 12px; border-radius: 3px; }
+  .leg-dot.c { background: #4caf50; }
+  .leg-dot.w { background: #ef5350; }
+  .leg-dot.p { background: #546e7a; }
+
+  /* Tiebreaker */
+  .tb-table { max-width: 400px; }
+  .tb-table td { text-align: left; padding: 6px 12px; font-size: 0.85rem; }
+
+  footer { text-align: center; padding: 20px; color: #2a3f5f; font-size: 0.75rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="trophy">⚽</div>
+  <div>
+    <h1>FIFA World Cup 2026 Bracket</h1>
+    <div class="sub">22 of 31 matches decided &nbsp;·&nbsp; 15 participants</div>
+  </div>
+</header>
+
+<section>
+  <h2>Leaderboard</h2>
+  <div class="lb-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Name</th><th>Total</th>
+          <th>R32 (25)</th><th>R16 (50)</th><th>QF (100)</th><th>SF (200)</th><th>Champ (400)</th>
+          <th>Remaining</th><th>Max Possible</th>
+        </tr>
+      </thead>
+      <tbody><tr><td>1</td><td><strong>Indra</strong></td><td class='pts-total'>550</td><td>300</td><td>250</td><td>0</td><td>0</td><td>0</td><td>1200</td><td class='pts-total'>1750</td></tr>
+<tr><td>2</td><td><strong>Mahiro</strong></td><td class='pts-total'>525</td><td>325</td><td>200</td><td>0</td><td>0</td><td>0</td><td>600</td><td class='pts-total'>1125</td></tr>
+<tr><td>3</td><td><strong>Dhruv</strong></td><td class='pts-total'>525</td><td>325</td><td>200</td><td>0</td><td>0</td><td>0</td><td>500</td><td class='pts-total'>1025</td></tr>
+<tr><td>4</td><td><strong>Josh</strong></td><td class='pts-total'>525</td><td>325</td><td>200</td><td>0</td><td>0</td><td>0</td><td>950</td><td class='pts-total'>1475</td></tr>
+<tr><td>5</td><td><strong>Merrick</strong></td><td class='pts-total'>525</td><td>275</td><td>250</td><td>0</td><td>0</td><td>0</td><td>1250</td><td class='pts-total'>1775</td></tr>
+<tr><td>6</td><td><strong>Gabe</strong></td><td class='pts-total'>500</td><td>250</td><td>250</td><td>0</td><td>0</td><td>0</td><td>1250</td><td class='pts-total'>1750</td></tr>
+<tr><td>7</td><td><strong>Vikram</strong></td><td class='pts-total'>475</td><td>275</td><td>200</td><td>0</td><td>0</td><td>0</td><td>1150</td><td class='pts-total'>1625</td></tr>
+<tr><td>8</td><td><strong>Jonathan</strong></td><td class='pts-total'>450</td><td>300</td><td>150</td><td>0</td><td>0</td><td>0</td><td>1200</td><td class='pts-total'>1650</td></tr>
+<tr><td>9</td><td><strong>Nick</strong></td><td class='pts-total'>450</td><td>300</td><td>150</td><td>0</td><td>0</td><td>0</td><td>1200</td><td class='pts-total'>1650</td></tr>
+<tr><td>10</td><td><strong>Cady</strong></td><td class='pts-total'>425</td><td>275</td><td>150</td><td>0</td><td>0</td><td>0</td><td>1250</td><td class='pts-total'>1675</td></tr>
+<tr><td>11</td><td><strong>Erik</strong></td><td class='pts-total'>425</td><td>225</td><td>200</td><td>0</td><td>0</td><td>0</td><td>1000</td><td class='pts-total'>1425</td></tr>
+<tr><td>12</td><td><strong>Raj</strong></td><td class='pts-total'>425</td><td>275</td><td>150</td><td>0</td><td>0</td><td>0</td><td>400</td><td class='pts-total'>825</td></tr>
+<tr><td>13</td><td><strong>Sam</strong></td><td class='pts-total'>400</td><td>250</td><td>150</td><td>0</td><td>0</td><td>0</td><td>300</td><td class='pts-total'>700</td></tr>
+<tr><td>14</td><td><strong>Mike</strong></td><td class='pts-total'>350</td><td>200</td><td>150</td><td>0</td><td>0</td><td>0</td><td>1050</td><td class='pts-total'>1400</td></tr>
+<tr><td>15</td><td><strong>Nils</strong></td><td class='pts-total'>325</td><td>225</td><td>100</td><td>0</td><td>0</td><td>0</td><td>1000</td><td class='pts-total'>1325</td></tr>
+</tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Bracket Picks</h2>
+  <div class="legend">
+    <div class="leg"><div class="leg-dot c"></div> Correct pick</div>
+    <div class="leg"><div class="leg-dot w"></div> Wrong pick</div>
+    <div class="leg"><div class="leg-dot p"></div> Not yet played</div>
+  </div>
+  <div class="tabs-nav" id="tabs-nav">
+<button class="tab-btn active" onclick="showTab('Indra')" id="btn-Indra">1. Indra (550)</button>
+<button class="tab-btn " onclick="showTab('Mahiro')" id="btn-Mahiro">2. Mahiro (525)</button>
+<button class="tab-btn " onclick="showTab('Dhruv')" id="btn-Dhruv">3. Dhruv (525)</button>
+<button class="tab-btn " onclick="showTab('Josh')" id="btn-Josh">4. Josh (525)</button>
+<button class="tab-btn " onclick="showTab('Merrick')" id="btn-Merrick">5. Merrick (525)</button>
+<button class="tab-btn " onclick="showTab('Gabe')" id="btn-Gabe">6. Gabe (500)</button>
+<button class="tab-btn " onclick="showTab('Vikram')" id="btn-Vikram">7. Vikram (475)</button>
+<button class="tab-btn " onclick="showTab('Jonathan')" id="btn-Jonathan">8. Jonathan (450)</button>
+<button class="tab-btn " onclick="showTab('Nick')" id="btn-Nick">9. Nick (450)</button>
+<button class="tab-btn " onclick="showTab('Cady')" id="btn-Cady">10. Cady (425)</button>
+<button class="tab-btn " onclick="showTab('Erik')" id="btn-Erik">11. Erik (425)</button>
+<button class="tab-btn " onclick="showTab('Raj')" id="btn-Raj">12. Raj (425)</button>
+<button class="tab-btn " onclick="showTab('Sam')" id="btn-Sam">13. Sam (400)</button>
+<button class="tab-btn " onclick="showTab('Mike')" id="btn-Mike">14. Mike (350)</button>
+<button class="tab-btn " onclick="showTab('Nils')" id="btn-Nils">15. Nils (325)</button>
+
+  </div>
+
+  <div class="bracket-header">
+    <div class="bh">R32</div>
+    <div class="bh">R16</div>
+    <div class="bh">QF</div>
+    <div class="bh">SF</div>
+    <div class="bh center">FINAL</div>
+    <div class="bh">SF</div>
+    <div class="bh">QF</div>
+    <div class="bh">R16</div>
+    <div class="bh">R32</div>
+  </div>
+
+  <div id="tab-panels">
+<div class="tab-pane active" id="tab-Indra">
+        <div class="player-score-bar">Total: 550 pts &nbsp;|&nbsp; R32: 300 &nbsp;R16: 250 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 1200 &nbsp;Max possible: 1750</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Canada</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell c">Portugal</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">USA</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell w">USA</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">France</div></div><div class="match-pair"><div class="b-cell p">USA</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">France</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">France</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">England</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div><div class="match-pair"><div class="b-cell p">Switzerland</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell c">Brazil</div></div><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell c">Mexico</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell c">Argentina</div></div><div class="match-pair"><div class="b-cell c">Egypt</div></div><div class="match-pair"><div class="b-cell c">Switzerland</div></div><div class="match-pair"><div class="b-cell w">Ghana</div></div></div>
+        </div>
+        </div>
+<div class="tab-pane " id="tab-Mahiro">
+        <div class="player-score-bar">Total: 525 pts &nbsp;|&nbsp; R32: 325 &nbsp;R16: 200 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 600 &nbsp;Max possible: 1125</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Canada</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell c">Portugal</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">USA</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">France</div></div><div class="match-pair"><div class="b-cell p">Spain</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">France</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">Japan</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">Japan</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">Japan</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell w">Japan</div></div><div class="match-pair"><div class="b-cell w">Mexico</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div><div class="match-pair"><div class="b-cell p">Colombia</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Japan</div></div><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell c">Mexico</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell c">Argentina</div></div><div class="match-pair"><div class="b-cell c">Egypt</div></div><div class="match-pair"><div class="b-cell c">Switzerland</div></div><div class="match-pair"><div class="b-cell c">Colombia</div></div></div>
+        </div>
+        </div>
+<div class="tab-pane " id="tab-Dhruv">
+        <div class="player-score-bar">Total: 525 pts &nbsp;|&nbsp; R32: 325 &nbsp;R16: 200 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 500 &nbsp;Max possible: 1025</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Canada</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell c">Portugal</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">USA</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell w">Portugal</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">France</div></div><div class="match-pair"><div class="b-cell p">Portugal</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">Portugal</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">Portugal</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">Brazil</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell w">Brazil</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div><div class="match-pair"><div class="b-cell p">Colombia</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell c">Brazil</div></div><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell c">Mexico</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell c">Argentina</div></div><div class="match-pair"><div class="b-cell c">Egypt</div></div><div class="match-pair"><div class="b-cell c">Switzerland</div></div><div class="match-pair"><div class="b-cell c">Colombia</div></div></div>
+        </div>
+        </div>
+<div class="tab-pane " id="tab-Josh">
+        <div class="player-score-bar">Total: 525 pts &nbsp;|&nbsp; R32: 325 &nbsp;R16: 200 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 950 &nbsp;Max possible: 1475</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell c">Paraguay</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Canada</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell c">Portugal</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">USA</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell w">USA</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">Morocco</div></div><div class="match-pair"><div class="b-cell p">Spain</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">Spain</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">Spain</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">Mexico</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">Mexico</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell w">Mexico</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div><div class="match-pair"><div class="b-cell p">Ghana</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell c">Brazil</div></div><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell c">Mexico</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell c">Argentina</div></div><div class="match-pair"><div class="b-cell c">Egypt</div></div><div class="match-pair"><div class="b-cell c">Switzerland</div></div><div class="match-pair"><div class="b-cell w">Ghana</div></div></div>
+        </div>
+        </div>
+<div class="tab-pane " id="tab-Merrick">
+        <div class="player-score-bar">Total: 525 pts &nbsp;|&nbsp; R32: 275 &nbsp;R16: 250 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 1250 &nbsp;Max possible: 1775</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Canada</div></div><div class="match-pair"><div class="b-cell w">Netherlands</div></div><div class="match-pair"><div class="b-cell c">Portugal</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">USA</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell w">Netherlands</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">France</div></div><div class="match-pair"><div class="b-cell p">Belgium</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">France</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">Argentina</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">Norway</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div><div class="match-pair"><div class="b-cell p">Algeria</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell c">Brazil</div></div><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell c">Mexico</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell c">Argentina</div></div><div class="match-pair"><div class="b-cell c">Egypt</div></div><div class="match-pair"><div class="b-cell w">Algeria</div></div><div class="match-pair"><div class="b-cell c">Colombia</div></div></div>
+        </div>
+        </div>
+<div class="tab-pane " id="tab-Gabe">
+        <div class="player-score-bar">Total: 500 pts &nbsp;|&nbsp; R32: 250 &nbsp;R16: 250 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 1250 &nbsp;Max possible: 1750</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell w">South Africa</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell c">Portugal</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">USA</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">France</div></div><div class="match-pair"><div class="b-cell p">Spain</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">France</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">France</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">England</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">England</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell w">Brazil</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div><div class="match-pair"><div class="b-cell p">Algeria</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell c">Brazil</div></div><div class="match-pair"><div class="b-cell w">Ivory Coast</div></div><div class="match-pair"><div class="b-cell c">Mexico</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell c">Argentina</div></div><div class="match-pair"><div class="b-cell w">Australia</div></div><div class="match-pair"><div class="b-cell w">Algeria</div></div><div class="match-pair"><div class="b-cell c">Colombia</div></div></div>
+        </div>
+        </div>
+<div class="tab-pane " id="tab-Vikram">
+        <div class="player-score-bar">Total: 475 pts &nbsp;|&nbsp; R32: 275 &nbsp;R16: 200 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 1150 &nbsp;Max possible: 1625</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Canada</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell c">Portugal</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">USA</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">France</div></div><div class="match-pair"><div class="b-cell p">Spain</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">Spain</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">Spain</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">Mexico</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell w">Brazil</div></div><div class="match-pair"><div class="b-cell w">Mexico</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div><div class="match-pair"><div class="b-cell p">Ghana</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell c">Brazil</div></div><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell c">Mexico</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell c">Argentina</div></div><div class="match-pair"><div class="b-cell w">Australia</div></div><div class="match-pair"><div class="b-cell c">Switzerland</div></div><div class="match-pair"><div class="b-cell w">Ghana</div></div></div>
+        </div>
+        </div>
+<div class="tab-pane " id="tab-Jonathan">
+        <div class="player-score-bar">Total: 450 pts &nbsp;|&nbsp; R32: 300 &nbsp;R16: 150 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 1200 &nbsp;Max possible: 1650</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Canada</div></div><div class="match-pair"><div class="b-cell w">Netherlands</div></div><div class="match-pair"><div class="b-cell c">Portugal</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">USA</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell w">Netherlands</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell w">USA</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">France</div></div><div class="match-pair"><div class="b-cell p">Spain</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">France</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">France</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">Brazil</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell w">Brazil</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div><div class="match-pair"><div class="b-cell p">Colombia</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell c">Brazil</div></div><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell c">Mexico</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell c">Argentina</div></div><div class="match-pair"><div class="b-cell c">Egypt</div></div><div class="match-pair"><div class="b-cell c">Switzerland</div></div><div class="match-pair"><div class="b-cell c">Colombia</div></div></div>
+        </div>
+        </div>
+<div class="tab-pane " id="tab-Nick">
+        <div class="player-score-bar">Total: 450 pts &nbsp;|&nbsp; R32: 300 &nbsp;R16: 150 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 1200 &nbsp;Max possible: 1650</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Canada</div></div><div class="match-pair"><div class="b-cell w">Netherlands</div></div><div class="match-pair"><div class="b-cell c">Portugal</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">USA</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell w">Netherlands</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell w">USA</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">France</div></div><div class="match-pair"><div class="b-cell p">Spain</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">France</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">France</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">Brazil</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell w">Brazil</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div><div class="match-pair"><div class="b-cell p">Colombia</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell c">Brazil</div></div><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell c">Mexico</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell c">Argentina</div></div><div class="match-pair"><div class="b-cell c">Egypt</div></div><div class="match-pair"><div class="b-cell c">Switzerland</div></div><div class="match-pair"><div class="b-cell c">Colombia</div></div></div>
+        </div>
+        </div>
+<div class="tab-pane " id="tab-Cady">
+        <div class="player-score-bar">Total: 425 pts &nbsp;|&nbsp; R32: 275 &nbsp;R16: 150 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 1250 &nbsp;Max possible: 1675</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell w">South Africa</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell c">Portugal</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">USA</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell w">South Africa</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell w">USA</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">France</div></div><div class="match-pair"><div class="b-cell p">Spain</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">Spain</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">Norway</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">Norway</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">Norway</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell w">Mexico</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div><div class="match-pair"><div class="b-cell p">Algeria</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell c">Brazil</div></div><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell c">Mexico</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell c">Argentina</div></div><div class="match-pair"><div class="b-cell w">Australia</div></div><div class="match-pair"><div class="b-cell w">Algeria</div></div><div class="match-pair"><div class="b-cell c">Colombia</div></div></div>
+        </div>
+        </div>
+<div class="tab-pane " id="tab-Erik">
+        <div class="player-score-bar">Total: 425 pts &nbsp;|&nbsp; R32: 225 &nbsp;R16: 200 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 1000 &nbsp;Max possible: 1425</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Canada</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell c">Portugal</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">USA</div></div><div class="match-pair"><div class="b-cell w">Senegal</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Morocco</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell w">USA</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">France</div></div><div class="match-pair"><div class="b-cell p">USA</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">France</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">France</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">Norway</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">Norway</div></div><div class="match-pair"><div class="b-cell p">Cape Verde</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell w">Mexico</div></div><div class="match-pair"><div class="b-cell p">Cape Verde</div></div><div class="match-pair"><div class="b-cell p">Algeria</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Japan</div></div><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell c">Mexico</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell w">Cape Verde</div></div><div class="match-pair"><div class="b-cell c">Egypt</div></div><div class="match-pair"><div class="b-cell w">Algeria</div></div><div class="match-pair"><div class="b-cell w">Ghana</div></div></div>
+        </div>
+        </div>
+<div class="tab-pane " id="tab-Raj">
+        <div class="player-score-bar">Total: 425 pts &nbsp;|&nbsp; R32: 275 &nbsp;R16: 150 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 400 &nbsp;Max possible: 825</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Canada</div></div><div class="match-pair"><div class="b-cell w">Netherlands</div></div><div class="match-pair"><div class="b-cell c">Portugal</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">USA</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell w">Netherlands</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell w">USA</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">Netherlands</div></div><div class="match-pair"><div class="b-cell p">Spain</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">Netherlands</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">Netherlands</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">—</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">England</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell w">Brazil</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div><div class="match-pair"><div class="b-cell p">Switzerland</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell c">Brazil</div></div><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell c">Mexico</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell c">Argentina</div></div><div class="match-pair"><div class="b-cell w">Australia</div></div><div class="match-pair"><div class="b-cell c">Switzerland</div></div><div class="match-pair"><div class="b-cell c">Colombia</div></div></div>
+        </div>
+        </div>
+<div class="tab-pane " id="tab-Sam">
+        <div class="player-score-bar">Total: 400 pts &nbsp;|&nbsp; R32: 250 &nbsp;R16: 150 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 300 &nbsp;Max possible: 700</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Canada</div></div><div class="match-pair"><div class="b-cell w">Netherlands</div></div><div class="match-pair"><div class="b-cell c">Portugal</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">USA</div></div><div class="match-pair"><div class="b-cell w">Senegal</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell w">Netherlands</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell w">Senegal</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">Netherlands</div></div><div class="match-pair"><div class="b-cell p">Spain</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">Netherlands</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">Netherlands</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">Brazil</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">Brazil</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell w">Brazil</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div><div class="match-pair"><div class="b-cell p">Colombia</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell c">Brazil</div></div><div class="match-pair"><div class="b-cell c">Norway</div></div><div class="match-pair"><div class="b-cell c">Mexico</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell c">Argentina</div></div><div class="match-pair"><div class="b-cell w">Australia</div></div><div class="match-pair"><div class="b-cell c">Switzerland</div></div><div class="match-pair"><div class="b-cell c">Colombia</div></div></div>
+        </div>
+        </div>
+<div class="tab-pane " id="tab-Mike">
+        <div class="player-score-bar">Total: 350 pts &nbsp;|&nbsp; R32: 200 &nbsp;R16: 150 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 1050 &nbsp;Max possible: 1400</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell c">Canada</div></div><div class="match-pair"><div class="b-cell w">Netherlands</div></div><div class="match-pair"><div class="b-cell w">Croatia</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell c">USA</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell w">Netherlands</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell w">USA</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">Netherlands</div></div><div class="match-pair"><div class="b-cell p">Spain</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">Spain</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">Spain</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">Brazil</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell w">Brazil</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div><div class="match-pair"><div class="b-cell p">Ghana</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell c">Brazil</div></div><div class="match-pair"><div class="b-cell w">Ivory Coast</div></div><div class="match-pair"><div class="b-cell w">Ecuador</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell c">Argentina</div></div><div class="match-pair"><div class="b-cell c">Egypt</div></div><div class="match-pair"><div class="b-cell c">Switzerland</div></div><div class="match-pair"><div class="b-cell w">Ghana</div></div></div>
+        </div>
+        </div>
+<div class="tab-pane " id="tab-Nils">
+        <div class="player-score-bar">Total: 325 pts &nbsp;|&nbsp; R32: 225 &nbsp;R16: 100 &nbsp;QF: 0 &nbsp;SF: 0 &nbsp;Champ: 0 &nbsp;|&nbsp; Remaining: 1000 &nbsp;Max possible: 1325</div>
+        <div class="bracket-grid">
+          <div class="bcol left-r32 rounds-8"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell c">France</div></div><div class="match-pair"><div class="b-cell w">South Africa</div></div><div class="match-pair"><div class="b-cell w">Netherlands</div></div><div class="match-pair"><div class="b-cell c">Portugal</div></div><div class="match-pair"><div class="b-cell c">Spain</div></div><div class="match-pair"><div class="b-cell w">Bosnia-Herz</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-r16 rounds-4"><div class="match-pair"><div class="b-cell w">Germany</div></div><div class="match-pair"><div class="b-cell w">Netherlands</div></div><div class="match-pair"><div class="b-cell w">Portugal</div></div><div class="match-pair"><div class="b-cell c">Belgium</div></div></div>
+          <div class="bcol left-qf rounds-2"><div class="match-pair"><div class="b-cell p">Netherlands</div></div><div class="match-pair"><div class="b-cell p">Belgium</div></div></div>
+          <div class="bcol left-sf rounds-1"><div class="match-pair"><div class="b-cell p">Netherlands</div></div></div>
+          <div class="bcol center"><div class="champion-slot p"><div class="champ-label">CHAMPION</div><div class="champ-pick">England</div></div></div>
+          <div class="bcol right-sf rounds-1"><div class="match-pair"><div class="b-cell p">England</div></div></div>
+          <div class="bcol right-qf rounds-2"><div class="match-pair"><div class="b-cell p">England</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div></div>
+          <div class="bcol right-r16 rounds-4"><div class="match-pair"><div class="b-cell w">Brazil</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell p">Argentina</div></div><div class="match-pair"><div class="b-cell p">Switzerland</div></div></div>
+          <div class="bcol right-r32 rounds-8"><div class="match-pair"><div class="b-cell c">Brazil</div></div><div class="match-pair"><div class="b-cell w">Ivory Coast</div></div><div class="match-pair"><div class="b-cell c">Mexico</div></div><div class="match-pair"><div class="b-cell c">England</div></div><div class="match-pair"><div class="b-cell c">Argentina</div></div><div class="match-pair"><div class="b-cell w">Australia</div></div><div class="match-pair"><div class="b-cell c">Switzerland</div></div><div class="match-pair"><div class="b-cell c">Colombia</div></div></div>
+        </div>
+        </div>
+
+  </div>
+</section>
+
+
+<section>
+  <h2>Tiebreaker — Total Corners (Knockout Rounds)</h2>
+  <div class="lb-wrap">
+    <table class="tb-table">
+      <thead><tr><th>Player</th><th>Guess</th></tr></thead>
+      <tbody><tr><td>Indra</td><td>232.0</td></tr>
+<tr><td>Mahiro</td><td>620</td></tr>
+<tr><td>Dhruv</td><td>300</td></tr>
+<tr><td>Josh</td><td>152</td></tr>
+<tr><td>Merrick</td><td>537</td></tr>
+<tr><td>Gabe</td><td>200.0</td></tr>
+<tr><td>Vikram</td><td>210</td></tr>
+<tr><td>Jonathan</td><td>200.0</td></tr>
+<tr><td>Nick</td><td>300</td></tr>
+<tr><td>Cady</td><td>200.0</td></tr>
+<tr><td>Erik</td><td>249</td></tr>
+<tr><td>Raj</td><td>201</td></tr>
+<tr><td>Sam</td><td>200.0</td></tr>
+<tr><td>Mike</td><td>200</td></tr>
+<tr><td>Nils</td><td>267</td></tr>
+</tbody>
+    </table>
+  </div>
+</section>
+
+
+<footer>Generated by bracket_scorer.py</footer>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('btn-' + name).classList.add('active');
+}
+</script>
+</body>
+</html>
